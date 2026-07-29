@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Construtor Inteligente de Currículo</title>
+    <!-- Importando a biblioteca jsPDF para geração do PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #0f766e;
+            --primary-hover: #115e59;
+            --bg-color: #f8fafc;
+            --chat-bg: #ffffff;
+            --text-color: #1e293b;
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --font-scale: 1rem;
+        }
+
+        /* Modo de Alto Contraste */
+        body.high-contrast {
+            --primary-color: #ffff00 !important;
+            --primary-hover: #cccc00 !important;
+            --bg-color: #000000 !important;
+            --chat-bg: #000000 !important;
+            --text-color: #ffff00 !important;
+        }
+
+        body.high-contrast .chat-container {
+            border: 2px solid #ffff00 !important;
+            box-shadow: none !important;
+        }
+
+        body.high-contrast .chat-header {
+            background-color: #000000 !important;
+            color: #ffff00 !important;
+            border-bottom: 2px solid #ffff00;
+        }
+
+        body.high-contrast .message.bot {
+            background-color: #1a1a1a !important;
+            color: #ffff00 !important;
+            border: 1px solid #ffff00 !important;
+        }
+
+        body.high-contrast .message.user {
+            background-color: #ffff00 !important;
+            color: #000000 !important;
+        }
+
+        body.high-contrast .option-btn {
+            background-color: #000000 !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        body.high-contrast .option-btn:hover,
+        body.high-contrast .option-btn.selected {
+            background-color: #ffff00 !important;
+            color: #000000 !important;
+        }
+
+        body.high-contrast .chat-input-area {
+            background: #000000 !important;
+            border-top: 2px solid #ffff00 !important;
+        }
+
+        body.high-contrast .chat-input-area textarea {
+            background-color: #000000 !important;
+            color: #ffff00 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        body.high-contrast .chat-input-area textarea::placeholder {
+            color: #cccc00 !important;
+        }
+
+        body.high-contrast .chat-input-area button.send-btn {
+            background-color: #ffff00 !important;
+            color: #000000 !important;
+            border: 2px solid #ffff00 !important;
+        }
+
+        body.high-contrast .back-btn {
+            background-color: #333333 !important;
+            color: #ffff00 !important;
+            border: 1px solid #ffff00 !important;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            position: fixed;
+            font-size: var(--font-scale);
+        }
+
+        .chat-container {
+            width: 100%;
+            height: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            background: var(--chat-bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+
+        @media (min-width: 701px) {
+            .chat-container {
+                height: 94vh;
+                margin: 3vh auto;
+                border-radius: 20px;
+                border: 1px solid #e2e8f0;
+            }
+        }
+
+        .chat-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.05rem;
+            font-weight: 600;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        .header-title {
+            flex: 1;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 8px;
+        }
+
+        .accessibility-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .access-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .access-btn:hover {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message {
+            max-width: 88%;
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 0.93rem;
+            line-height: 1.45;
+            word-break: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.bot {
+            background-color: #f1f5f9;
+            color: #334155;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .message.user {
+            background-color: var(--primary-color);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .interactive-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        @media (min-width: 480px) {
+            .interactive-options {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+        }
+
+        .option-btn {
+            background-color: #ffffff;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            width: 100%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        @media (min-width: 480px) {
+            .option-btn {
+                width: auto;
+                text-align: center;
+                border-radius: 20px;
+            }
+        }
+
+        .option-btn:hover, .option-btn:active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .option-btn.selected {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .color-circle {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 8px;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+
+        .back-btn-container {
+            margin-top: 10px;
+        }
+
+        .back-btn {
+            background-color: #e2e8f0;
+            color: #475569;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .back-btn:hover {
+            background-color: #cbd5e1;
+        }
+
+        .chat-input-area {
+            padding: 12px 16px;
+            padding-bottom: calc(12px + var(--safe-area-bottom));
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-shrink: 0;
+        }
+
+        .chat-input-area textarea {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            outline: none;
+            font-size: 1rem;
+            background-color: #f8fafc;
+            color: var(--text-color);
+            resize: none;
+            overflow-y: hidden;
+            min-height: 48px;
+            max-height: 140px;
+            line-height: 1.4;
+            font-family: inherit;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .chat-input-area textarea:focus {
+            border-color: var(--primary-color);
+            background-color: #ffffff;
+        }
+
+        .chat-input-area button.send-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            height: 48px;
+            transition: background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .chat-input-area button.send-btn:hover {
+            background-color: var(--primary-hover);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-title" id="chatHeaderTitle">Assistente de Currículo</div>
+            <div class="accessibility-controls">
+                <button class="access-btn" onclick="mudarFonte('diminuir')" title="Diminuir Fonte">A-</button>
+                <button class="access-btn" onclick="mudarFonte('aumentar')" title="Aumentar Fonte">A+</button>
+                <button class="access-btn" onclick="toggleAltoContraste()" title="Alto Contraste">👁</button>
+            </div>
+        </div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input-area" id="inputArea">
+            <textarea id="userInput" rows="1" placeholder="Digite sua resposta..." autocomplete="off"></textarea>
+            <button class="send-btn" id="sendBtn" onclick="processInput()">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        const cvData = {
+            nome: '',
+            idade: '',
+            estadoCivil: '',
+            cargoDesejado: '',
+            email: '',
+            telefone: '',
+            endereco: '',
+            cidadeEstado: '',
+            corTema: '#0f766e',
+            fotoBase64: '',
+            objetivo: '',
+            formacoes: [],
+            experiencias: [],
+            habilidades: []
+        };
+
+        let currentStep = 0;
+        let tempFormacao = {};
+        let tempExperiencia = {};
+        let habilidadesSelecionadas = [];
+        let fontSizeMultiplier = 1;
+
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const inputArea = document.getElementById('inputArea');
+        const chatHeaderTitle = document.getElementById('chatHeaderTitle');
+
+        function ajustarAlturaTextarea() {
+            userInput.style.height = 'auto';
+            userInput.style.height = Math.min(userInput.scrollHeight, 140) + 'px';
+        }
+
+        userInput.addEventListener('input', ajustarAlturaTextarea);
+
+        function mudarFonte(acao) {
+            if (acao === 'aumentar' && fontSizeMultiplier < 1.35) {
+                fontSizeMultiplier += 0.1;
+            } else if (acao === 'diminuir' && fontSizeMultiplier > 0.85) {
+                fontSizeMultiplier -= 0.1;
+            }
+            document.documentElement.style.setProperty('--font-scale', fontSizeMultiplier + 'rem');
+        }
+
+        function toggleAltoContraste() {
+            document.body.classList.toggle('high-contrast');
+        }
+
+        function atualizarCorTema(novaCor) {
+            cvData.corTema = novaCor;
+            if (!document.body.classList.contains('high-contrast')) {
+                document.documentElement.style.setProperty('--primary-color', novaCor);
+                document.querySelectorAll('.message.user').forEach(el => el.style.backgroundColor = novaCor);
+            }
+        }
+
+        // Funções de Validação, Correção Ortográfica e Formatação
+        function capitalizarTexto(str) {
+            if (!str) return '';
+            const excecoes = ['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'por', 'com'];
+            return str.toLowerCase().split(' ').map((palavra, index) => {
+                if (excecoes.includes(palavra) && index > 0) return palavra;
+                return palavra.charAt(0).toUpperCase() + palavra.slice(1);
+            }).join(' ');
+        }
+
+        function formatarNome(nome) {
+            if (!nome) return '';
+            let limpo = nome.trim().replace(/\s+/g, ' ');
+            limpo = limpo.replace(/[0-9]/g, '');
+            return capitalizarTexto(limpo);
+        }
+
+        function formatarEmail(email) {
+            if (!email) return '';
+            return email.trim().toLowerCase().replace(/\s+/g, '');
+        }
+
+        function formatarTelefone(tel) {
+            if (!tel) return '';
+            let apenasNums = tel.replace(/\D/g, '');
+            if (apenasNums.length === 11) {
+                return `(${apenasNums.slice(0,2)}) ${apenasNums.slice(2,7)}-${apenasNums.slice(7)}`;
+            } else if (apenasNums.length === 10) {
+                return `(${apenasNums.slice(0,2)}) ${apenasNums.slice(2,6)}-${apenasNums.slice(6)}`;
+            }
+            return tel.trim();
+        }
+
+        function formatarEndereco(end) {
+            if (!end) return '';
+            let limpo = end.trim().replace(/\s+/g, ' ');
+            return capitalizarTexto(limpo);
+        }
+
+        function formatarCidadeEstado(ce) {
+            if (!ce) return '';
+            let limpo = ce.trim().replace(/\s+/g, ' ');
+            limpo = limpo.replace(/\s*-\s*/g, ' / ').replace(/\s*,\s*/g, ' / ');
+            let partes = limpo.split('/');
+            if (partes.length >= 2) {
+                let cidade = capitalizarTexto(partes[0].trim());
+                let estado = partes[1].trim().toUpperCase();
+                return `${cidade} - ${estado}`;
+            }
+            return capitalizarTexto(limpo);
+        }
+
+        function formatarTextoGeral(texto) {
+            if (!texto) return '';
+            let limpo = texto.trim().replace(/\s+/g, ' ');
+            return limpo.charAt(0).toUpperCase() + limpo.slice(1);
+        }
+
+        function appendMessage(text, sender, customHtml = '') {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+            messageDiv.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            if (customHtml) {
+                const htmlDiv = document.createElement('div');
+                htmlDiv.innerHTML = customHtml;
+                messageDiv.appendChild(htmlDiv);
+            }
+
+            if (sender === 'bot' && currentStep > 0) {
+                const backDiv = document.createElement('div');
+                backDiv.className = 'back-btn-container';
+                backDiv.innerHTML = `<button class="back-btn" onclick="voltarPasso()">⬅ Voltar e corrigir anterior</button>`;
+                messageDiv.appendChild(backDiv);
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        const steps = [
+            // 0: Nome
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Digite seu nome completo...';
+                    ajustarAlturaTextarea();
+                    appendMessage("Olá! Seja muito bem-vindo(a). Vou te ajudar a montar um currículo profissional impecável direto pelo celular.\n\nPara começarmos, qual é o seu **Nome Completo**?", 'bot');
+                }
+            },
+            // 1: Idade
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Digite sua idade...';
+                    ajustarAlturaTextarea();
+                    appendMessage(`Prazer em te conhecer, **${cvData.nome}**! Qual é a sua **Idade**?`, 'bot');
+                }
+            },
+            // 2: Estado Civil
+            {
+                ask: () => {
+                    userInput.value = 'Solteiro(a)';
+                    userInput.placeholder = 'Digite ou selecione o estado civil...';
+                    ajustarAlturaTextarea();
+                    const html = `
+                        <div class="interactive-options">
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Solteiro(a)')">Solteiro(a)</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Casado(a)')">Casado(a)</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Divorciado(a)')">Divorciado(a)</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Viúvo(a)')">Viúvo(a)</button>
+                            <button class="option-btn" onclick="focarOutrosEstadoCivil()">Outros (+)</button>
+                        </div>
+                        <p style="font-size:0.82rem; margin-top:8px; color:#64748b;">* Escolha uma opção ou edite livremente no campo de texto abaixo antes de enviar.</p>
+                    `;
+                    appendMessage("Qual é o seu **Estado Civil**?", 'bot', html);
+                }
+            },
+            // 3: Cargo / Vaga desejada
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Ex: Atendente, Vendedor, Auxiliar...';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual é o **Cargo ou Vaga Desejada** que você está buscando?", 'bot');
+                }
+            },
+            // 4: E-mail
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'seu.email@exemplo.com';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual é o seu **E-mail** de contato?", 'bot');
+                }
+            },
+            // 5: Telefone
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = '(00) 00000-0000';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual é o seu **Telefone / WhatsApp** com DDD?", 'bot');
+                }
+            },
+            // 6: Endereço
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Ex: Rua Principal, 123';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual é o seu **Endereço**?", 'bot');
+                }
+            },
+            // 7: Cidade e Estado
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Ex: Maceió - AL';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual é a sua **Cidade e Estado**?", 'bot');
+                }
+            },
+            // 8: Cor do Currículo
+            {
+                ask: () => {
+                    userInput.value = '#0f766e';
+                    userInput.placeholder = 'Código da cor ou escolha abaixo...';
+                    ajustarAlturaTextarea();
+                    const html = `
+                        <div class="interactive-options">
+                            <button class="option-btn" onclick="escolherCor('#0f766e')"><span class="color-circle" style="background:#0f766e"></span>Verde Petróleo</button>
+                            <button class="option-btn" onclick="escolherCor('#1e40af')"><span class="color-circle" style="background:#1e40af"></span>Azul Escuro</button>
+                            <button class="option-btn" onclick="escolherCor('#b91c1c')"><span class="color-circle" style="background:#b91c1c"></span>Vermelho</button>
+                            <button class="option-btn" onclick="escolherCor('#334155')"><span class="color-circle" style="background:#334155"></span>Cinza Executivo</button>
+                            <button class="option-btn" onclick="escolherCor('#581c87')"><span class="color-circle" style="background:#581c87"></span>Roxo Elegante</button>
+                        </div>
+                        <p style="font-size:0.82rem; margin-top:8px; color:#64748b;">* Escolha a cor de destaque do seu currículo em PDF.</p>
+                    `;
+                    appendMessage("Escolha a **Cor de Destaque**:", 'bot', html);
+                }
+            },
+            // 9: Foto de Perfil (Opcional)
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Pular ou enviar foto...';
+                    ajustarAlturaTextarea();
+                    const html = `
+                        <div style="margin-top: 10px;">
+                            <input type="file" id="fotoInput" accept="image/*" style="margin-bottom: 10px; display:block; font-size: 0.9rem;" onchange="carregarFoto(event)">
+                            <button class="option-btn" style="text-align:center;" onclick="pularFoto()">Continuar sem foto</button>
+                        </div>
+                    `;
+                    appendMessage("Deseja incluir uma **Foto de Perfil**? (Opcional)", 'bot', html);
+                }
+            },
+            // 10: Objetivo Profissional
+            {
+                ask: () => {
+                    const sugestaoPadrao = `Busco consolidar minha carreira atuando na função de ${cvData.cargoDesejado}, aplicando minha dedicação, facilidade de aprendizado e forte compromisso com a excelência operacional. Tenho como foco agregar valor aos processos da empresa, garantindo um atendimento de alto nível e eficiência.`;
+                    userInput.value = sugestaoPadrao;
+                    userInput.placeholder = 'Edite seu objetivo profissional aqui...';
+                    ajustarAlturaTextarea();
+                    
+                    const html = `
+                        <div class="interactive-options">
+                            <button class="option-btn" onclick="definirTextoObjetivo('Busco consolidar minha carreira atuando na função de ${cvData.cargoDesejado}, aplicando minha dedicação, facilidade de aprendizado e forte compromisso com a excelência operacional. Tenho como foco agregar valor aos processos da empresa, garantindo um atendimento de alto nível e eficiência.')">Foco em Resultados</button>
+                            <button class="option-btn" onclick="definirTextoObjetivo('Obter uma oportunidade de crescimento como ${cvData.cargoDesejado}, unindo minha proatividade, organização e foco em soluções práticas. Desejo contribuir ativamente para o sucesso da instituição.')">Foco em Desenvolvimento</button>
+                            <button class="option-btn" onclick="definirTextoObjetivo('Ingressar no mercado de trabalho na área de ${cvData.cargoDesejado}, trazendo muita energia, vontade de aprender, responsabilidade e foco no atendimento humanizado.')">Foco em Primeiro Emprego</button>
+                        </div>
+                        <p style="font-size:0.82rem; margin-top:8px; color:#64748b;">* Ao clicar em uma sugestão, ela aparecerá editável no campo de texto abaixo para você ajustar antes de enviar.</p>
+                    `;
+                    appendMessage("Escolha uma sugestão de **Objetivo Profissional** (ela virá editável no campo abaixo) ou digite livremente:", 'bot', html);
+                }
+            },
+            // 11: Formação Acadêmica (Nível)
+            {
+                ask: () => {
+                    userInput.value = 'Ensino Médio';
+                    userInput.placeholder = 'Digite ou escolha o nível acadêmico...';
+                    ajustarAlturaTextarea();
+                    const html = `
+                        <div class="interactive-options">
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Ensino Fundamental')">Ensino Fundamental</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Ensino Médio')">Ensino Médio</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Ensino Técnico')">Ensino Técnico</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Ensino Superior (Graduação)')">Ensino Superior (Graduação)</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Pós-Graduação / Mestrado')">Pós-Graduação / Mestrado</button>
+                            <button class="option-btn" onclick="focarOutrosFormacaoNivel()">Outros (+)</button>
+                        </div>
+                        <p style="font-size:0.82rem; margin-top:8px; color:#64748b;">* Selecione ou digite o nível escolaridade.</p>
+                    `;
+                    appendMessage("Vamos para a sua **Formação Acadêmica**. Qual é o nível?", 'bot', html);
+                }
+            },
+            // 12: Nome do Curso
+            {
+                ask: () => {
+                    if (tempFormacao.nivel === 'Ensino Fundamental' || tempFormacao.nivel === 'Ensino Médio') {
+                        currentStep = 13;
+                        steps[currentStep].ask();
+                    } else {
+                        userInput.value = '';
+                        userInput.placeholder = 'Ex: Administração, Enfermagem...';
+                        ajustarAlturaTextarea();
+                        appendMessage(`Qual é o **Nome do Curso**?`, 'bot');
+                    }
+                }
+            },
+            // 13: Nome da Instituição
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Nome da escola ou faculdade...';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual é o nome da **Escola ou Instituição de Ensino**?", 'bot');
+                }
+            },
+            // 14: Status
+            {
+                ask: () => {
+                    userInput.value = 'Concluído';
+                    userInput.placeholder = 'Situação atual...';
+                    ajustarAlturaTextarea();
+                    const html = `
+                        <div class="interactive-options">
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Concluído')">Concluí</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Cursando')">Estou cursando</button>
+                            <button class="option-btn" onclick="focarOutrosStatus()">Outros (+)</button>
+                        </div>
+                    `;
+                    appendMessage("Qual é a sua situação nesta formação?", 'bot', html);
+                }
+            },
+            // 15: Ano de Conclusão
+            {
+                ask: () => {
+                    if (tempFormacao.statusOpcao === 'Concluído') {
+                        userInput.value = '';
+                        userInput.placeholder = 'Ex: 2023';
+                        ajustarAlturaTextarea();
+                        appendMessage("Qual foi o **Ano de Conclusão**?", 'bot');
+                    } else {
+                        salvarFormacaoAtual();
+                    }
+                }
+            },
+            // 16: Deseja adicionar mais formação?
+            {
+                ask: () => {
+                    userInput.value = 'Não, avançar';
+                    userInput.placeholder = 'Sim ou Não...';
+                    ajustarAlturaTextarea();
+                    const descForm = tempFormacao.curso ? `${tempFormacao.nivel} em ${tempFormacao.curso}` : tempFormacao.nivel;
+                    const html = `
+                        <div class="interactive-options">
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Sim, adicionar outra')">Sim, adicionar outra</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Não, avançar')">Não, avançar</button>
+                        </div>
+                    `;
+                    appendMessage(`Formação de **${descForm}** adicionada! Deseja cadastrar outra formação?`, 'bot', html);
+                }
+            },
+            // 17: Experiência Profissional (Possui?)
+            {
+                ask: () => {
+                    userInput.value = 'Sim, quero adicionar';
+                    userInput.placeholder = 'Sim ou Não...';
+                    ajustarAlturaTextarea();
+                    const html = `
+                        <div class="interactive-options">
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Sim, quero adicionar')">Sim, quero adicionar</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Não tenho (Primeiro Emprego)')">Não tenho (Primeiro Emprego)</button>
+                        </div>
+                    `;
+                    appendMessage("Excelente! Vamos falar sobre **Experiência Profissional**. Você já trabalhou anteriormente?", 'bot', html);
+                }
+            },
+            // 18: Nome da Empresa
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Nome da empresa...';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual o nome da **Empresa** onde você trabalhou?", 'bot');
+                }
+            },
+            // 19: Cargo Ocupado
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Ex: Vendedor, Assistente...';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual era o seu **Cargo ou Função** nessa empresa?", 'bot');
+                }
+            },
+            // 20: Descrição das Atividades
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Descreva suas principais rotinas...';
+                    ajustarAlturaTextarea();
+                    appendMessage("Descreva resumidamente **o que você fazia** na função:", 'bot');
+                }
+            },
+            // 21: Período do trabalho
+            {
+                ask: () => {
+                    userInput.value = '';
+                    userInput.placeholder = 'Ex: 2022 a 2024';
+                    ajustarAlturaTextarea();
+                    appendMessage("Qual foi o **Período** de atuação?", 'bot');
+                }
+            },
+            // 22: Adicionar outra experiência?
+            {
+                ask: () => {
+                    userInput.value = 'Não, avançar';
+                    userInput.placeholder = 'Sim ou Não...';
+                    ajustarAlturaTextarea();
+                    const html = `
+                        <div class="interactive-options">
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Sim, adicionar outra')">Sim, adicionar outra</button>
+                            <button class="option-btn" onclick="selecionarOpcaoRapida('Não, avançar')">Não, avançar</button>
+                        </div>
+                    `;
+                    appendMessage("Experiência salva! Deseja cadastrar mais alguma experiência profissional?", 'bot', html);
+                }
+            },
+            // 23: Habilidades
+            {
+                ask: () => {
+                    habilidadesSelecionadas = [];
+                    userInput.value = '';
+                    userInput.placeholder = 'Clique nas opções abaixo ou digite...';
+                    ajustarAlturaTextarea();
+                    const html = `
+                        <div class="interactive-options" id="skillsOptions">
+                            <button class="option-btn" onclick="toggleHabilidade(this, 'Atendimento ao Cliente')">Atendimento ao Cliente</button>
+                            <button class="option-btn" onclick="toggleHabilidade(this, 'Pacote Office / Excel')">Pacote Office / Excel</button>
+                            <button class="option-btn" onclick="toggleHabilidade(this, 'Trabalho em Equipe')">Trabalho em Equipe</button>
+                            <button class="option-btn" onclick="toggleHabilidade(this, 'Comunicação Efetiva')">Comunicação Efetiva</button>
+                            <button class="option-btn" onclick="toggleHabilidade(this, 'Organização e Gestão de Tempo')">Organização e Gestão</button>
+                            <button class="option-btn" onclick="toggleHabilidade(this, 'Inglês Intermediário/Fluente')">Inglês Intermediário/Fluente</button>
+                            <button class="option-btn" onclick="focarOutrosHabilidade()">Outros (+)</button>
+                        </div>
+                        <p style="font-size:0.82rem; margin-top:10px; color:#64748b;">* Clique nas opções para adicioná-las separadas por vírgula no campo de mensagem. Edite se precisar e clique em Enviar.</p>
+                    `;
+                    appendMessage("Quais são as suas principais **Habilidades e Competências**?", 'bot', html);
+                }
+            }
+        ];
+
+        function startChat() {
+            steps[currentStep].ask();
+        }
+
+        function voltarPasso() {
+            if (currentStep > 0) {
+                if (chatMessages.lastChild) chatMessages.removeChild(chatMessages.lastChild);
+                if (chatMessages.lastChild) chatMessages.removeChild(chatMessages.lastChild);
+
+                currentStep--;
+                if (currentStep === 12 && (tempFormacao.nivel === 'Ensino Fundamental' || tempFormacao.nivel === 'Ensino Médio')) {
+                    currentStep = 11;
+                }
+                if (currentStep === 15 && tempFormacao.statusOpcao === 'Cursando') {
+                    currentStep = 14;
+                }
+                
+                steps[currentStep].ask();
+            }
+        }
+
+        function processInput() {
+            const val = userInput.value.trim();
+            if (!val && currentStep !== 23) return;
+
+            if (val) {
+                appendMessage(val, 'user');
+                userInput.value = '';
+                ajustarAlturaTextarea();
+            }
+
+            tratarLogicaPasso(val);
+        }
+
+        function selecionarOpcaoRapida(texto) {
+            userInput.value = texto;
+            ajustarAlturaTextarea();
+            processInput();
+        }
+
+        function definirTextoObjetivo(texto) {
+            userInput.value = texto;
+            ajustarAlturaTextarea();
+            userInput.focus();
+        }
+
+        function focarOutrosEstadoCivil() {
+            userInput.value = '';
+            userInput.placeholder = 'Digite outro estado civil...';
+            ajustarAlturaTextarea();
+            userInput.focus();
+        }
+
+        function focarOutrosFormacaoNivel() {
+            userInput.value = '';
+            userInput.placeholder = 'Digite outro nível acadêmico...';
+            ajustarAlturaTextarea();
+            userInput.focus();
+        }
+
+        function focarOutrosStatus() {
+            userInput.value = '';
+            userInput.placeholder = 'Digite outra situação...';
+            ajustarAlturaTextarea();
+            userInput.focus();
+        }
+
+        function focarOutrosHabilidade() {
+            userInput.placeholder = 'Digite nova habilidade...';
+            userInput.focus();
+        }
+
+        function toggleHabilidade(btn, habilidade) {
+            if (btn.classList.contains('selected')) {
+                btn.classList.remove('selected');
+                habilidadesSelecionadas = habilidadesSelecionadas.filter(h => h !== habilidade);
+            } else {
+                btn.classList.add('selected');
+                if (!habilidadesSelecionadas.includes(habilidade)) {
+                    habilidadesSelecionadas.push(habilidade);
+                }
+            }
+            userInput.value = habilidadesSelecionadas.join(', ');
+            ajustarAlturaTextarea();
+            userInput.focus();
+        }
+
+        function tratarLogicaPasso(val) {
+            switch(currentStep) {
+                case 0:
+                    cvData.nome = formatarNome(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 1:
+                    cvData.idade = val.replace(/\D/g, '');
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 2:
+                    cvData.estadoCivil = formatarTextoGeral(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 3:
+                    cvData.cargoDesejado = formatarTextoGeral(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 4:
+                    cvData.email = formatarEmail(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 5:
+                    cvData.telefone = formatarTelefone(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 6:
+                    cvData.endereco = formatarEndereco(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 7:
+                    cvData.cidadeEstado = formatarCidadeEstado(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 8:
+                    atualizarCorTema(val.startsWith('#') ? val : '#0f766e');
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 10:
+                    cvData.objetivo = formatarTextoGeral(val);
+                    currentStep = 11;
+                    steps[currentStep].ask();
+                    break;
+                case 11:
+                    tempFormacao.nivel = formatarTextoGeral(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 12:
+                    tempFormacao.curso = formatarTextoGeral(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 13:
+                    tempFormacao.instituicao = formatarTextoGeral(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 14:
+                    tempFormacao.statusOpcao = formatarTextoGeral(val);
+                    tempFormacao.statusTexto = tempFormacao.statusOpcao;
+                    if (tempFormacao.statusOpcao === 'Cursando') {
+                        tempFormacao.anoOuStatus = 'Cursando';
+                        cvData.formacoes.push({...tempFormacao});
+                        tempFormacao = {};
+                        currentStep = 16;
+                    } else {
+                        currentStep++;
+                    }
+                    steps[currentStep].ask();
+                    break;
+                case 15:
+                    tempFormacao.anoOuStatus = val.replace(/\D/g, '');
+                    cvData.formacoes.push({...tempFormacao});
+                    tempFormacao = {};
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 16:
+                    if (val.toLowerCase().includes('sim')) {
+                        currentStep = 11;
+                    } else {
+                        currentStep = 17;
+                    }
+                    steps[currentStep].ask();
+                    break;
+                case 17:
+                    if (val.toLowerCase().includes('sim')) {
+                        currentStep = 18;
+                    } else {
+                        cvData.experiencias = [];
+                        currentStep = 23;
+                    }
+                    steps[currentStep].ask();
+                    break;
+                case 18:
+                    tempExperiencia.empresa = formatarTextoGeral(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 19:
+                    tempExperiencia.cargo = formatarTextoGeral(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 20:
+                    tempExperiencia.atividades = formatarTextoGeral(val);
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 21:
+                    tempExperiencia.periodo = formatarTextoGeral(val);
+                    cvData.experiencias.push({...tempExperiencia});
+                    tempExperiencia = {};
+                    currentStep++;
+                    steps[currentStep].ask();
+                    break;
+                case 22:
+                    if (val.toLowerCase().includes('sim')) {
+                        currentStep = 18;
+                    } else {
+                        currentStep = 23;
+                    }
+                    steps[currentStep].ask();
+                    break;
+                case 23:
+                    let listaHabilidades = val.split(',').map(h => formatarTextoGeral(h)).filter(h => h.length > 0);
+                    if (listaHabilidades.length === 0) {
+                        alert("Por favor, informe ao menos uma habilidade.");
+                        return;
+                    }
+                    cvData.habilidades = listaHabilidades;
+                    inputArea.style.display = 'none';
+
+                    setTimeout(() => {
+                        appendMessage("Perfeito! Processando dados e gerando seu currículo em PDF...", 'bot');
+                        generatePDF();
+                    }, 600);
+                    break;
+            }
+        }
+
+        function escolherCor(corHex) {
+            atualizarCorTema(corHex);
+            userInput.value = corHex;
+            ajustarAlturaTextarea();
+            processInput();
+        }
+
+        function carregarFoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    cvData.fotoBase64 = e.target.result;
+                    appendMessage("Foto carregada com sucesso!", 'user');
+                    currentStep = 10;
+                    steps[currentStep].ask();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function pularFoto() {
+            appendMessage("Continuar sem foto", 'user');
+            cvData.fotoBase64 = '';
+            currentStep = 10;
+            steps[currentStep].ask();
+        }
+
+        userInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                processInput();
+            }
+        });
+
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            let y = 20;
+            let startX = 20;
+
+            let hex = cvData.corTema.replace('#', '');
+            let r = parseInt(hex.substring(0, 2), 16) || 15;
+            let g = parseInt(hex.substring(2, 4), 16) || 118;
+            let b = parseInt(hex.substring(4, 6), 16) || 110;
+
+            if (document.body.classList.contains('high-contrast')) {
+                r = 0; g = 0; b = 0;
+            }
+
+            if (cvData.fotoBase64) {
+                try {
+                    doc.addImage(cvData.fotoBase64, 'JPEG', 20, 15, 22, 25);
+                    startX = 48;
+                } catch (e) {
+                    console.error("Erro ao inserir foto:", e);
+                }
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
+            doc.setTextColor(r, g, b);
+            doc.text(cvData.nome.toUpperCase(), startX, y);
+
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9.5);
+            doc.setTextColor(100, 116, 139);
+            
+            doc.text(`Idade: ${cvData.idade} anos | Estado Civil: ${cvData.estadoCivil}`, startX, y);
+            y += 4.5;
+            doc.text(`E-mail: ${cvData.email} | Telefone: ${cvData.telefone}`, startX, y);
+            y += 4.5;
+            doc.text(`Endereço: ${cvData.endereco} | ${cvData.cidadeEstado}`, startX, y);
+
+            y += 8;
+            doc.setDrawColor(203, 213, 225);
+            doc.line(20, y, 190, y);
+
+            function addSectionTitle(title) {
+                y += 10;
+                if (y > 270) { doc.addPage(); y = 20; }
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(11);
+                doc.setTextColor(r, g, b);
+                doc.text(title.toUpperCase(), 20, y);
+                y += 2;
+                doc.setDrawColor(r, g, b);
+                doc.setLineWidth(0.5);
+                doc.line(20, y, 190, y);
+                y += 6;
+            }
+
+            // 1. OBJETIVO PROFISSIONAL
+            addSectionTitle("Objetivo Profissional");
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.setTextColor(30, 41, 59);
+            const splitObjetivo = doc.splitTextToSize(cvData.objetivo, 170);
+            doc.text(splitObjetivo, 20, y);
+            y += (splitObjetivo.length * 5);
+
+            // 2. FORMAÇÃO ACADÊMICA
+            if (cvData.formacoes.length > 0) {
+                addSectionTitle("Formação Acadêmica");
+                cvData.formacoes.forEach(f => {
+                    if (y > 265) { doc.addPage(); y = 20; }
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(10);
+                    doc.setTextColor(30, 41, 59);
+                    
+                    let formacaoTitulo = f.curso ? `• ${f.nivel} em ${f.curso}` : `• ${f.nivel}`;
+                    doc.text(formacaoTitulo, 20, y);
+                    
+                    y += 5;
+                    doc.setFont("helvetica", "normal");
+                    doc.text(`Instituição: ${f.instituicao} | ${f.anoOuStatus}`, 24, y);
+                    y += 6;
+                });
+            }
+
+            // 3. EXPERIÊNCIA PROFISSIONAL
+            if (cvData.experiencias.length > 0) {
+                addSectionTitle("Experiência Profissional");
+                cvData.experiencias.forEach(exp => {
+                    if (y > 260) { doc.addPage(); y = 20; }
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(10);
+                    doc.setTextColor(30, 41, 59);
+                    doc.text(`• ${exp.cargo} - ${exp.empresa}`, 20, y);
+                    
+                    y += 5;
+                    doc.setFont("helvetica", "italic");
+                    doc.setFontSize(9);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(`Período: ${exp.periodo}`, 24, y);
+
+                    y += 5;
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
+                    doc.setTextColor(30, 41, 59);
+                    const splitAtiv = doc.splitTextToSize(`Atividades: ${exp.atividades}`, 166);
+                    doc.text(splitAtiv, 24, y);
+                    y += (splitAtiv.length * 5) + 3;
+                });
+            }
+
+            // 4. HABILIDADES
+            if (cvData.habilidades.length > 0) {
+                addSectionTitle("Habilidades e Competências");
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                doc.setTextColor(30, 41, 59);
+                
+                cvData.habilidades.forEach(hab => {
+                    if (y > 270) { doc.addPage(); y = 20; }
+                    doc.text(`• ${hab}`, 20, y);
+                    y += 5;
+                });
+            }
+
+            setTimeout(() => {
+                const fileName = "curriculo_" + cvData.nome.toLowerCase().replace(/\s+/g, '_') + ".pdf";
+                doc.save(fileName);
+                appendMessage("Pronto! O download do seu currículo em PDF foi concluído. Boa sorte na sua busca profissional!", 'bot');
+            }, 1000);
+        }
+
+        window.onload = startChat;
+    </script>
+</body>
+</html>
