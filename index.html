@@ -874,37 +874,51 @@
 
 function voltarPasso() {
     if (currentStep > 0) {
-        // Remove as mensagens do chat (a do bot e a do usuário)
+        // Remove as duas últimas mensagens (a pergunta do bot e a resposta do usuário)
         if (chatMessages.lastChild) chatMessages.removeChild(chatMessages.lastChild);
         if (chatMessages.lastChild) chatMessages.removeChild(chatMessages.lastChild);
 
-        // Se estiver voltando da pergunta "Deseja adicionar outra formação?" (passo 16)
-        if (currentStep === 16) {
-            tempFormacao = cvData.formacoes.pop() || {};
-            currentStep = 15;
+        // --- TRATAMENTO PARA EXPERIÊNCIAS ---
+        if (currentStep >= 18 && currentStep <= 22) {
+            if (currentStep === 22) {
+                // Se o usuário estava no passo 22 (pergunta de confirmação) e voltou para o período (passo 21),
+                // resgatamos a experiência salva do array para continuar editando ela
+                tempExperiencia = cvData.experiencias.pop() || {};
+                currentStep = 21;
+            } else if (currentStep === 18) {
+                tempExperiencia = {};
+                currentStep = 17;
+            } else {
+                currentStep--;
+            }
             steps[currentStep].ask();
             return;
         }
 
-        // Se estiver voltando da pergunta "Deseja adicionar outra experiência?" (passo 22)
-        if (currentStep === 22) {
-            tempExperiencia = cvData.experiencias.pop() || {};
-            currentStep = 21;
+        // --- TRATAMENTO PARA FORMAÇÕES ---
+        if (currentStep >= 11 && currentStep <= 16) {
+            if (currentStep === 16) {
+                tempFormacao = cvData.formacoes.pop() || {};
+                currentStep = 15;
+            } else if (currentStep === 11) {
+                tempFormacao = {};
+                currentStep = 10;
+            } else {
+                currentStep--;
+            }
+
+            if (currentStep === 12 && (tempFormacao.nivel === 'Ensino Fundamental' || tempFormacao.nivel === 'Ensino Médio')) {
+                currentStep = 11;
+            }
+            if (currentStep === 15 && tempFormacao.statusOpcao === 'Cursando') {
+                currentStep = 14;
+            }
+
             steps[currentStep].ask();
             return;
         }
 
-        // Transição do fluxo normal de passos
         currentStep--;
-
-        // Ajustes para saltos de passos condicionais
-        if (currentStep === 12 && (tempFormacao.nivel === 'Ensino Fundamental' || tempFormacao.nivel === 'Ensino Médio')) {
-            currentStep = 11;
-        }
-        if (currentStep === 15 && tempFormacao.statusOpcao === 'Cursando') {
-            currentStep = 14;
-        }
-        
         steps[currentStep].ask();
     }
 }
@@ -1055,13 +1069,23 @@ function voltarPasso() {
                     }
                     steps[currentStep].ask();
                     break;
-                case 15:
-                    tempFormacao.anoOuStatus = val.replace(/\D/g, '');
-                    cvData.formacoes.push({...tempFormacao});
-                    tempFormacao = {};
-                    currentStep++;
-                    steps[currentStep].ask();
-                    break;
+case 15:
+    tempFormacao.anoOuStatus = val.replace(/\D/g, '');
+
+    const formacaoCompleta = {
+        nivel: tempFormacao.nivel || '',
+        curso: tempFormacao.curso || '',
+        instituicao: tempFormacao.instituicao || '',
+        statusOpcao: tempFormacao.statusOpcao || '',
+        statusTexto: tempFormacao.statusTexto || '',
+        anoOuStatus: tempFormacao.anoOuStatus || ''
+    };
+
+    cvData.formacoes.push(formacaoCompleta);
+    tempFormacao = {}; // Limpa após salvar com sucesso
+    currentStep++;
+    steps[currentStep].ask();
+    break;
                 case 16:
                     if (val.toLowerCase().includes('sim')) {
                         currentStep = 11;
@@ -1094,13 +1118,22 @@ function voltarPasso() {
                     currentStep++;
                     steps[currentStep].ask();
                     break;
-                case 21:
-                    tempExperiencia.periodo = formatarTextoGeral(val);
-                    cvData.experiencias.push({...tempExperiencia});
-                    tempExperiencia = {};
-                    currentStep++;
-                    steps[currentStep].ask();
-                    break;
+case 21:
+    tempExperiencia.periodo = formatarTextoGeral(val);
+
+    // Garante que se algum campo anterior estiver ausente, ele mantém o valor antigo caso exista
+    const experienciaCompleta = {
+        empresa: tempExperiencia.empresa || '',
+        cargo: tempExperiencia.cargo || '',
+        atividades: tempExperiencia.atividades || '',
+        periodo: tempExperiencia.periodo || ''
+    };
+
+    cvData.experiencias.push(experienciaCompleta);
+    tempExperiencia = {}; // Limpa após salvar com sucesso
+    currentStep++;
+    steps[currentStep].ask();
+    break;
                 case 22:
                     if (val.toLowerCase().includes('sim')) {
                         currentStep = 18;
