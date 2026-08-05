@@ -756,22 +756,28 @@
                     }
                 }
             },
-            // 16: Deseja adicionar mais formação?
-            {
-                ask: () => {
-                    userInput.value = 'Não, avançar';
-                    userInput.placeholder = 'Sim ou Não...';
-                    ajustarAlturaTextarea();
-                    const descForm = tempFormacao.curso ? `${tempFormacao.nivel} em ${tempFormacao.curso}` : tempFormacao.nivel;
-                    const html = `
-                        <div class="interactive-options">
-                            <button class="option-btn" onclick="selecionarOpcaoRapida('Sim, adicionar outra')">Sim, adicionar outra</button>
-                            <button class="option-btn" onclick="selecionarOpcaoRapida('Não, avançar')">Não, avançar</button>
-                        </div>
-                    `;
-                    appendMessage(`Formação de **${descForm}** adicionada! Deseja cadastrar outra formação?`, 'bot', html);
-                }
-            },
+// 16: Deseja adicionar mais formação?
+{
+    ask: () => {
+        userInput.value = 'Não, avançar';
+        userInput.placeholder = 'Sim ou Não...';
+        ajustarAlturaTextarea();
+        
+        // Pega a última formação cadastrada no array em vez do objeto temporário
+        const ultimaFormacao = cvData.formacoes[cvData.formacoes.length - 1];
+        const descForm = (ultimaFormacao && ultimaFormacao.curso) 
+            ? `${ultimaFormacao.nivel} em ${ultimaFormacao.curso}` 
+            : (ultimaFormacao ? ultimaFormacao.nivel : 'cadastrada');
+
+        const html = `
+            <div class="interactive-options">
+                <button class="option-btn" onclick="selecionarOpcaoRapida('Sim, adicionar outra')">Sim, adicionar outra</button>
+                <button class="option-btn" onclick="selecionarOpcaoRapida('Não, avançar')">Não, avançar</button>
+            </div>
+        `;
+        appendMessage(`Formação de **${descForm}** adicionada! Deseja cadastrar outra formação?`, 'bot', html);
+    }
+}
             // 17: Experiência Profissional (Possui?)
             {
                 ask: () => {
@@ -866,22 +872,42 @@
             steps[currentStep].ask();
         }
 
-        function voltarPasso() {
-            if (currentStep > 0) {
-                if (chatMessages.lastChild) chatMessages.removeChild(chatMessages.lastChild);
-                if (chatMessages.lastChild) chatMessages.removeChild(chatMessages.lastChild);
+function voltarPasso() {
+    if (currentStep > 0) {
+        // Remove as mensagens do chat (a do bot e a do usuário)
+        if (chatMessages.lastChild) chatMessages.removeChild(chatMessages.lastChild);
+        if (chatMessages.lastChild) chatMessages.removeChild(chatMessages.lastChild);
 
-                currentStep--;
-                if (currentStep === 12 && (tempFormacao.nivel === 'Ensino Fundamental' || tempFormacao.nivel === 'Ensino Médio')) {
-                    currentStep = 11;
-                }
-                if (currentStep === 15 && tempFormacao.statusOpcao === 'Cursando') {
-                    currentStep = 14;
-                }
-                
-                steps[currentStep].ask();
-            }
+        // Se estiver voltando da pergunta "Deseja adicionar outra formação?" (passo 16)
+        if (currentStep === 16) {
+            tempFormacao = cvData.formacoes.pop() || {};
+            currentStep = 15;
+            steps[currentStep].ask();
+            return;
         }
+
+        // Se estiver voltando da pergunta "Deseja adicionar outra experiência?" (passo 22)
+        if (currentStep === 22) {
+            tempExperiencia = cvData.experiencias.pop() || {};
+            currentStep = 21;
+            steps[currentStep].ask();
+            return;
+        }
+
+        // Transição do fluxo normal de passos
+        currentStep--;
+
+        // Ajustes para saltos de passos condicionais
+        if (currentStep === 12 && (tempFormacao.nivel === 'Ensino Fundamental' || tempFormacao.nivel === 'Ensino Médio')) {
+            currentStep = 11;
+        }
+        if (currentStep === 15 && tempFormacao.statusOpcao === 'Cursando') {
+            currentStep = 14;
+        }
+        
+        steps[currentStep].ask();
+    }
+}
 
         function processInput() {
             const val = userInput.value.trim();
@@ -1203,51 +1229,67 @@
             doc.text(splitObjetivo, 20, y);
             y += (splitObjetivo.length * 5);
 
-            // 2. FORMAÇÃO ACADÊMICA
-            if (cvData.formacoes.length > 0) {
-                addSectionTitle("Formação Acadêmica");
-                cvData.formacoes.forEach(f => {
-                    if (y > 265) { doc.addPage(); y = 20; }
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(10);
-                    doc.setTextColor(30, 41, 59);
-                    
-                    let formacaoTitulo = f.curso ? `• ${f.nivel} em ${f.curso}` : `• ${f.nivel}`;
-                    doc.text(formacaoTitulo, 20, y);
-                    
-                    y += 5;
-                    doc.setFont("helvetica", "normal");
-                    doc.text(`Instituição: ${f.instituicao} | ${f.anoOuStatus}`, 24, y);
-                    y += 6;
-                });
-            }
+// 2. FORMAÇÃO ACADÊMICA
+if (cvData.formacoes.length > 0) {
+    addSectionTitle("Formação Acadêmica");
+    cvData.formacoes.forEach(f => {
+        if (y > 265) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(30, 41, 59);
+        
+        let nivel = f.nivel || '';
+        let curso = f.curso ? ` em ${f.curso}` : '';
+        let formacaoTitulo = `• ${nivel}${curso}`;
+        doc.text(formacaoTitulo, 20, y);
+        
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        
+        let inst = f.instituicao || 'Não informada';
+        let statusAno = f.anoOuStatus || f.statusTexto || '';
+        let detalheInst = statusAno ? `Instituição: ${inst} | ${statusAno}` : `Instituição: ${inst}`;
+        
+        doc.text(detalheInst, 24, y);
+        y += 6;
+    });
+}
 
-            // 3. EXPERIÊNCIA PROFISSIONAL
-            if (cvData.experiencias.length > 0) {
-                addSectionTitle("Experiência Profissional");
-                cvData.experiencias.forEach(exp => {
-                    if (y > 260) { doc.addPage(); y = 20; }
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(10);
-                    doc.setTextColor(30, 41, 59);
-                    doc.text(`• ${exp.cargo} - ${exp.empresa}`, 20, y);
-                    
-                    y += 5;
-                    doc.setFont("helvetica", "italic");
-                    doc.setFontSize(9);
-                    doc.setTextColor(100, 116, 139);
-                    doc.text(`Período: ${exp.periodo}`, 24, y);
+// 3. EXPERIÊNCIA PROFISSIONAL
+// Filtra apenas experiências que possuam ao menos o cargo ou a empresa preenchidos
+const experienciasValidas = cvData.experiencias.filter(exp => exp && (exp.cargo || exp.empresa));
 
-                    y += 5;
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(10);
-                    doc.setTextColor(30, 41, 59);
-                    const splitAtiv = doc.splitTextToSize(`Atividades: ${exp.atividades}`, 166);
-                    doc.text(splitAtiv, 24, y);
-                    y += (splitAtiv.length * 5) + 3;
-                });
-            }
+if (experienciasValidas.length > 0) {
+    addSectionTitle("Experiência Profissional");
+    experienciasValidas.forEach(exp => {
+        if (y > 260) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(30, 41, 59);
+        
+        let cargo = exp.cargo || 'Cargo não informado';
+        let empresa = exp.empresa || 'Empresa não informada';
+        doc.text(`• ${cargo} - ${empresa}`, 20, y);
+        
+        y += 5;
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        
+        let periodo = exp.periodo || 'Período não informado';
+        doc.text(`Período: ${periodo}`, 24, y);
 
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(30, 41, 59);
+        
+        let atividades = exp.atividades || 'Não descritas';
+        const splitAtiv = doc.splitTextToSize(`Atividades: ${atividades}`, 166);
+        doc.text(splitAtiv, 24, y);
+        y += (splitAtiv.length * 5) + 3;
+    });
+}
             // 4. HABILIDADES
             if (cvData.habilidades.length > 0) {
                 addSectionTitle("Habilidades e Competências");
