@@ -1119,9 +1119,10 @@ case 15:
                     steps[currentStep].ask();
                     break;
 case 21:
+    // Garante que o novo período digitado seja salvo
     tempExperiencia.periodo = formatarTextoGeral(val);
 
-    // Garante que se algum campo anterior estiver ausente, ele mantém o valor antigo caso exista
+    // Mescla o novo período com os dados antigos armazenados
     const experienciaCompleta = {
         empresa: tempExperiencia.empresa || '',
         cargo: tempExperiencia.cargo || '',
@@ -1129,8 +1130,12 @@ case 21:
         periodo: tempExperiencia.periodo || ''
     };
 
+    // Adiciona o registro atualizado ao array de experiências
     cvData.experiencias.push(experienciaCompleta);
-    tempExperiencia = {}; // Limpa após salvar com sucesso
+    
+    // Limpa a variável temporária após a inclusão
+    tempExperiencia = {};
+    
     currentStep++;
     steps[currentStep].ask();
     break;
@@ -1343,8 +1348,10 @@ if (experienciasValidas.length > 0) {
                 appendMessage("Pronto! O download do seu currículo em PDF foi concluído. Boa sorte na sua busca profissional!", 'bot');
             }, 1000);
         }
-
-        window.onload = startChat;
+        // Garante a inicialização do chat
+        window.onload = function() {
+            startChat();
+        };
     </script>
 </body>
 </html>
